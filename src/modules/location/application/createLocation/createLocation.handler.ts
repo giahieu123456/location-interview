@@ -17,14 +17,8 @@ export class CreateLocationHandler {
   }
 
   private async createLocation(data: CreateLocationRequestBody): Promise<void> {
-    const { name, locationNumber, area, parentId } = data;
+    const { name, locationNumber, area, parentId, buildingId } = data;
 
-    if (!parentId) {
-      const rootLocation = await this.locationService.findRootLocation();
-      if (rootLocation) {
-        throw new BadRequestException('The root location already exist');
-      }
-    }
     let parent: Location | undefined = undefined;
 
     if (parentId) {
@@ -34,8 +28,12 @@ export class CreateLocationHandler {
           `Parent location with ID ${parentId} does not exist.`,
         );
       }
-
       parent = parentLocation;
+      if (parent.buildingId !== buildingId) {
+        throw new BadRequestException(
+          `can not  belong to the location from another building.`,
+        );
+      }
     }
 
     await this.locationService.create({
@@ -43,6 +41,7 @@ export class CreateLocationHandler {
       locationNumber,
       area: parseFloat(area),
       parent,
+      buildingId,
     });
   }
 }

@@ -19,7 +19,7 @@ export class GetLocationHandler {
       skip: +skip,
       take: +take,
       total,
-      data,
+      data: data as any,
     };
   }
 
@@ -43,6 +43,7 @@ export class GetLocationHandler {
       skip,
       take,
       order: { name: 'ASC' },
+      relations: ['building', 'parent'],
     });
 
     return { data, total };

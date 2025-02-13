@@ -8,11 +8,13 @@ import { LocationService } from '../../location.service';
 export class GetLocationByIdHandler {
   constructor(private readonly locationService: LocationService) {}
 
-  public async execute(query: GetBuildingsQuery): Promise<LocationResponse> {
+  public async execute(
+    query: GetBuildingsQuery,
+  ): Promise<LocationResponse | null> {
     return this.getLocation(+query.id);
   }
 
-  private async getLocation(id: number): Promise<LocationResponse> {
+  private async getLocation(id: number): Promise<LocationResponse | null> {
     await this.locationService.checkExist(+id);
     return this.locationService.getTreeLocationById(id);
   }

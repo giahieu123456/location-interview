@@ -1,7 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Location } from '../../../../entities/location.entity';
+import { Building } from '../../../../entities/building.entity';
 
-export class LocationResponse implements Location {
+export class LocationResponse {
+  @ApiProperty({
+    description: 'building id',
+    example: '1',
+  })
+  buildingId!: number;
+
+  @ApiProperty({
+    description: 'parent',
+    example: {},
+  })
+  parent!: LocationResponse | null;
+
   @ApiProperty({
     description: 'Location number',
     example: 'A-01',
@@ -36,5 +49,5 @@ export class LocationResponse implements Location {
     description: 'name of building',
     example: 'building A',
   })
-  children!: Location[];
+  children!: LocationResponse[];
 }

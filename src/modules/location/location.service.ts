@@ -21,7 +21,6 @@ export class LocationService {
       const location = this.locationRepository.create(locationData);
       return this.locationRepository.save(location);
     } catch (error) {
-      console.log(error);
       throw new BadRequestException(error);
     }
   }
@@ -50,12 +49,6 @@ export class LocationService {
     return location;
   }
 
-  async findRootLocation(): Promise<Location | null> {
-    return await this.locationRepository.findOne({
-      where: { parentId: undefined },
-    });
-  }
-
   async update(id: number, updateData: Partial<Location>): Promise<void> {
     const cleanedObj = _.pickBy(updateData, _.identity);
     const location = await this.locationRepository.preload({
@@ -74,17 +67,17 @@ export class LocationService {
     }
   }
 
-  async getTreeLocationById(id: number) {
+  async getTreeLocationById(id: number): Promise<LocationResponse | null> {
     const result = await this.locationRepository.query(
       `
-        WITH RECURSIVE location_tree AS (
-        SELECT id, name, "locationNumber", area, "parentId"
+      WITH RECURSIVE location_tree AS (
+        SELECT id, name, "locationNumber", area, "parentId", "buildingId"
         FROM location
         WHERE id = $1 -- Root node
-
+  
         UNION ALL
-
-        SELECT l.id, l.name, l."locationNumber", l.area, l."parentId"
+  
+        SELECT l.id, l.name, l."locationNumber", l.area, l."parentId", l."buildingId"
         FROM location l
         INNER JOIN location_tree lt ON l."parentId" = lt.id
       )
@@ -92,11 +85,18 @@ export class LocationService {
       `,
       [id],
     );
+
+    if (!result.length) {
+      throw new NotFoundException(`Location with ID ${id} not found`);
+    }
+
     return this.locationTree(result, id);
   }
 
-  locationTree(locations: any[], rootId: number): LocationResponse {
+  locationTree(locations: any[], rootId: number): LocationResponse | null {
     const locationMap = new Map<number, LocationResponse>();
+
+    // ✅ Step 1: Create a map of all locations
     locations.forEach((location) => {
       locationMap.set(location.id, {
         id: location.id,
@@ -105,6 +105,8 @@ export class LocationService {
         area: location.area,
         parentId: location.parentId,
         children: [],
+        buildingId: location.buildingId,
+        parent: location.parent,
       });
     });
 
@@ -112,7 +114,6 @@ export class LocationService {
 
     locations.forEach((location) => {
       const locationNode = locationMap.get(location.id);
-
       if (!locationNode) return;
 
       if (location.parentId === null || location.id === rootId) {
@@ -121,10 +122,11 @@ export class LocationService {
         const parentNode = locationMap.get(location.parentId);
         if (parentNode) {
           parentNode.children.push(locationNode);
+          locationNode.parent = parentNode;
         }
       }
     });
 
-    return root!;
+    return root;
   }
 }

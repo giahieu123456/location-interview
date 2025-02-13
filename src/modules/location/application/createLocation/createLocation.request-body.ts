@@ -18,6 +18,14 @@ export class CreateLocationRequestBody {
   parentId?: number;
 
   @ApiProperty({
+    description: 'building id',
+    example: 1,
+  })
+  @IsNumber()
+  @IsNotEmpty()
+  buildingId!: number;
+
+  @ApiProperty({
     description: 'name of location',
     example: 'Root location',
   })

@@ -7,6 +7,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
+import { Building } from './building.entity';
 
 @Entity()
 export class Location {
@@ -26,6 +27,9 @@ export class Location {
   @Column({ nullable: true })
   parentId?: number;
 
+  @Column({ nullable: false })
+  buildingId!: number;
+
   @ManyToOne(() => Location, (location) => location.children, {
     nullable: true,
     onDelete: 'CASCADE',
@@ -35,4 +39,10 @@ export class Location {
 
   @OneToMany(() => Location, (location) => location.parent)
   children!: Location[];
+
+  @ManyToOne(() => Building, (building) => building.locations, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'buildingId' })
+  building!: Building;
 }
