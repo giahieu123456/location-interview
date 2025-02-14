@@ -13,7 +13,7 @@ export class LocationResponse {
     description: 'parent',
     example: {},
   })
-  parent!: LocationResponse | null;
+  parent?: LocationResponse | null;
 
   @ApiProperty({
     description: 'Location number',

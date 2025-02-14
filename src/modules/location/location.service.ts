@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -93,8 +95,12 @@ export class LocationService {
     return this.locationTree(result, id);
   }
 
-  locationTree(locations: any[], rootId: number): LocationResponse | null {
+  locationTree(
+    locations: LocationResponse[],
+    rootId: number,
+  ): LocationResponse | null {
     const locationMap = new Map<number, LocationResponse>();
+    const visited = new Set<number>();
 
     locations.forEach((location) => {
       locationMap.set(location.id, {
@@ -105,27 +111,46 @@ export class LocationService {
         parentId: location.parentId,
         children: [],
         buildingId: location.buildingId,
-        parent: location.parent,
+        parent: null,
       });
     });
 
-    let root: LocationResponse | null = null;
+    function buildTree(item: LocationResponse, ancestors: Set<number>) {
+      if (ancestors.has(item.id)) {
+        throw new HttpException(
+          `Circular reference detected at location ID ${item.id}`,
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
 
-    locations.forEach((location) => {
-      const locationNode = locationMap.get(location.id);
-      if (!locationNode) return;
+      ancestors.add(item.id);
 
-      if (location.parentId === null || location.id === rootId) {
-        root = locationNode;
-      } else {
-        const parentNode = locationMap.get(location.parentId);
-        if (parentNode) {
-          parentNode.children.push(locationNode);
-          locationNode.parent = parentNode;
+      if (item.parentId !== null && item.parentId !== undefined) {
+        const parent = locationMap.get(item.parentId);
+        if (parent) {
+          parent.children.push(item);
         }
+      }
+
+      return item;
+    }
+
+    locations.forEach((item) => {
+      if (!visited.has(item.id)) {
+        buildTree(locationMap.get(item.id)!, new Set<number>());
+        visited.add(item.id);
       }
     });
 
-    return root;
+    function removeParentReferences(node: LocationResponse): LocationResponse {
+      const { parent, ...rest } = node;
+      return {
+        ...rest,
+        children: node.children.map(removeParentReferences),
+      };
+    }
+
+    const root = locationMap.get(rootId);
+    return root ? removeParentReferences(root) : null;
   }
 }
