@@ -96,7 +96,6 @@ export class LocationService {
   locationTree(locations: any[], rootId: number): LocationResponse | null {
     const locationMap = new Map<number, LocationResponse>();
 
-    // ✅ Step 1: Create a map of all locations
     locations.forEach((location) => {
       locationMap.set(location.id, {
         id: location.id,
