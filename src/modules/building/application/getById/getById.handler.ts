@@ -16,6 +16,7 @@ export class GetLocationByIdHandler {
 
   private async getLocation(id: number): Promise<BuildingResponse | null> {
     await this.buildingService.checkExist(+id);
-    return await this.buildingService.getTreeBuilding(+id);
+    const result = await this.buildingService.getTreeBuildings([+id]);
+    return result[0];
   }
 }

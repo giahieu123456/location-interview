@@ -4,10 +4,14 @@ import { GetBuildingRequestQuery } from './getAll.request-query';
 import { GetBuildingQueryResponse } from './getAll.response';
 import { DataSource, ILike, Repository } from 'typeorm';
 import { Building } from '../../../../entities/building.entity';
+import { BuildingService } from '../../building.service';
 
 @QueryHandler(GetBuildingsQuery)
 export class GetBuildingHandler {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly buildingService: BuildingService,
+    private readonly dataSource: DataSource,
+  ) {}
 
   public async execute(
     query: GetBuildingsQuery,
@@ -28,17 +32,20 @@ export class GetBuildingHandler {
   ): Promise<{ data: Building[]; total: number }> {
     const buildingRepository: Repository<Building> =
       this.dataSource.getRepository(Building);
-
     const { search, take, skip } = option;
     const whereCondition = search ? [{ name: ILike(`%${search}%`) }] : {};
 
-    const [data, total] = await buildingRepository.findAndCount({
+    const [buildings, total] = await buildingRepository.findAndCount({
       where: whereCondition,
       skip,
       take,
       order: { name: 'ASC' },
-      relations: ['locations'],
+      select: {
+        id: true,
+      },
     });
+    const buildingIds = buildings.map((item) => item.id);
+    const data = await this.buildingService.getTreeBuildings(buildingIds);
 
     return { data, total };
   }

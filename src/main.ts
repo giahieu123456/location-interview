@@ -12,7 +12,7 @@ async function bootstrap() {
     .setTitle('Location API')
     .setDescription('API for managing locations')
     .setVersion('1.0')
-    .addBearerAuth() // Adds JWT authentication support
+    .addBearerAuth()
     .build();
   app.use(helmet());
 

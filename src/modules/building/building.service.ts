@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import * as _ from 'lodash';
 import { Building } from '../../entities/building.entity';
 import { Location } from '../../entities/location.entity';
@@ -69,41 +69,44 @@ export class BuildingService {
     }
   }
 
-  async getTreeBuilding(buildingId: number) {
-    const building = await this.buildingRespository.findOne({
-      where: { id: buildingId },
+  async getTreeBuildings(buildingIds: number[]) {
+    const buildings = await this.buildingRespository.find({
+      where: { id: In(buildingIds) },
+      relations: ['locations'],
     });
 
-    if (!building) {
-      throw new Error('Building not found');
+    if (!buildings || buildings.length === 0) {
+      throw new Error('No buildings found');
     }
 
-    const locations = await this.locationRespository.find({
-      where: { buildingId },
-    });
+    const treeBuildings = buildings.map((building) => {
+      const locations = building.locations;
 
-    const locationMap = new Map<number, Location>();
-    const rootLocations: Location[] = [];
+      const locationMap = new Map<number, Location>();
+      const rootLocations: Location[] = [];
 
-    locations.forEach((location) => {
-      location.children = [];
-      locationMap.set(location.id, location);
-    });
+      locations.forEach((location) => {
+        location.children = [];
+        locationMap.set(location.id, location);
+      });
 
-    locations.forEach((location) => {
-      if (location.parentId) {
-        const parent = locationMap.get(location.parentId);
-        if (parent) {
-          parent.children.push(location);
+      locations.forEach((location) => {
+        if (location.parentId) {
+          const parent = locationMap.get(location.parentId);
+          if (parent) {
+            parent.children.push(location);
+          }
+        } else {
+          rootLocations.push(location);
         }
-      } else {
-        rootLocations.push(location);
-      }
+      });
+
+      return {
+        ...building,
+        locations: rootLocations,
+      };
     });
 
-    return {
-      ...building,
-      locations: rootLocations,
-    };
+    return treeBuildings;
   }
 }

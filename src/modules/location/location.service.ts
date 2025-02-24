@@ -100,7 +100,6 @@ export class LocationService {
     rootId: number,
   ): LocationResponse | null {
     const locationMap = new Map<number, LocationResponse>();
-    const visited = new Set<number>();
 
     locations.forEach((location) => {
       locationMap.set(location.id, {
@@ -115,42 +114,16 @@ export class LocationService {
       });
     });
 
-    function buildTree(item: LocationResponse, ancestors: Set<number>) {
-      if (ancestors.has(item.id)) {
-        throw new HttpException(
-          `Circular reference detected at location ID ${item.id}`,
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
-
-      ancestors.add(item.id);
-
+    locations.forEach((item) => {
       if (item.parentId !== null && item.parentId !== undefined) {
         const parent = locationMap.get(item.parentId);
         if (parent) {
           parent.children.push(item);
         }
       }
-
-      return item;
-    }
-
-    locations.forEach((item) => {
-      if (!visited.has(item.id)) {
-        buildTree(locationMap.get(item.id)!, new Set<number>());
-        visited.add(item.id);
-      }
     });
 
-    function removeParentReferences(node: LocationResponse): LocationResponse {
-      const { parent, ...rest } = node;
-      return {
-        ...rest,
-        children: node.children.map(removeParentReferences),
-      };
-    }
-
     const root = locationMap.get(rootId);
-    return root ? removeParentReferences(root) : null;
+    return root || null;
   }
 }
