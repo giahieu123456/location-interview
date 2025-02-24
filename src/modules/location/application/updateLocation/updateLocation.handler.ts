@@ -16,12 +16,13 @@ export class UpdateLocationHandler {
     data: UpdateLocationRequestBody,
     id: string,
   ): Promise<void> {
-    const { name, area, locationNumber } = data;
+    const { name, area, locationNumber, parentId } = data;
     await this.locationService.checkExist(+id);
     await this.locationService.update(+id, {
       area: area ? parseFloat(area) : undefined,
       name,
       locationNumber,
+      parentId,
     });
   }
 }

@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsNotEmpty,
+  IsNumber,
   IsNumberString,
   IsOptional,
   IsString,
@@ -35,4 +36,12 @@ export class UpdateLocationRequestBody {
   @IsNumberString()
   @Transform(({ value }) => value.toString())
   area?: string;
+
+  @ApiProperty({
+    description: 'parent id',
+    example: 1,
+  })
+  @IsOptional()
+  @IsNumber()
+  parentId?: number;
 }

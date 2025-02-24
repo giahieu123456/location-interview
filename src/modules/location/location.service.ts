@@ -53,6 +53,35 @@ export class LocationService {
 
   async update(id: number, updateData: Partial<Location>): Promise<void> {
     const cleanedObj = _.pickBy(updateData, _.identity);
+
+    const descendants = await this.locationRepository.query(
+      `
+      WITH RECURSIVE location_tree AS (
+        SELECT id, "parentId"
+        FROM location
+        WHERE id = $1 -- Root node
+
+        UNION ALL
+
+        SELECT l.id, l."parentId"
+        FROM location l
+        INNER JOIN location_tree lt ON l."parentId" = lt.id
+      )
+      SELECT id FROM location_tree;
+      `,
+      [id],
+    );
+
+    if (
+      descendants.some(
+        (item: { id: number }) => item.id === updateData.parentId,
+      )
+    ) {
+      throw new BadRequestException(
+        'A location cannot be assigned as a parent to one of its own descendants.',
+      );
+    }
+
     const location = await this.locationRepository.preload({
       id,
       ...cleanedObj,
@@ -103,27 +132,43 @@ export class LocationService {
 
     locations.forEach((location) => {
       locationMap.set(location.id, {
-        id: location.id,
-        name: location.name,
-        locationNumber: location.locationNumber,
-        area: location.area,
-        parentId: location.parentId,
+        ...location,
         children: [],
-        buildingId: location.buildingId,
-        parent: null,
       });
     });
 
-    locations.forEach((item) => {
-      if (item.parentId !== null && item.parentId !== undefined) {
-        const parent = locationMap.get(item.parentId);
-        if (parent) {
-          parent.children.push(item);
-        }
-      }
-    });
-
     const root = locationMap.get(rootId);
-    return root || null;
+    if (!root) {
+      return null;
+    }
+
+    const visited = new Set<number>();
+
+    function buildTree(node: LocationResponse, ancestors: Set<number>) {
+      if (ancestors.has(node.id)) {
+        throw new Error(
+          `Cycle detected: Location ${node.id} is its own ancestor.`,
+        );
+      }
+
+      ancestors.add(node.id);
+      visited.add(node.id);
+
+      node.children = locations
+        .filter((location) => location.parentId === node.id)
+        .map((child) => {
+          const childNode = locationMap.get(child.id);
+          if (childNode) {
+            buildTree(childNode, new Set(ancestors));
+          }
+          return childNode!;
+        });
+
+      ancestors.delete(node.id);
+    }
+
+    buildTree(root, new Set());
+
+    return root;
   }
 }
